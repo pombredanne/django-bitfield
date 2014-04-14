@@ -107,7 +107,7 @@ class BitField(BigIntegerField):
 
         if len(flags) > MAX_FLAG_COUNT:
             raise ValueError('Too many flags')
-        
+
         flags = list(flags)
         labels = []
         for num, flag in enumerate(flags):
@@ -158,7 +158,7 @@ class BitField(BigIntegerField):
         if isinstance(value, (BitHandler, Bit)):
             return BitQueryLookupWrapper(self.model._meta.db_table, self.db_column or self.name, value)
         return BigIntegerField.get_db_prep_lookup(self, lookup_type=lookup_type, value=value,
-                                                        connection=connection, prepared=prepared)
+                                                  connection=connection, prepared=prepared)
 
     def get_prep_lookup(self, lookup_type, value):
         if isinstance(value, SQLEvaluator) and isinstance(value.expression, Bit):
@@ -240,7 +240,7 @@ class CompositeBitField(object):
         cls = sender
         model_fields = dict([
             (f.name, f) for f in cls._meta.fields if f.name in self.fields])
-        all_flags = sum([model_fields[f].flags for f in self.fields], ())
+        all_flags = sum([model_fields[f].flags for f in self.fields], [])
         if len(all_flags) != len(set(all_flags)):
             raise ValueError('BitField flags must be unique.')
 

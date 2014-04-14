@@ -5,6 +5,7 @@ from django.contrib.admin import FieldListFilter
 from django.contrib.admin.options import IncorrectLookupParameters
 
 from bitfield import Bit
+from bitfield.compat import bitor
 
 
 class BitFieldListFilter(FieldListFilter):
@@ -17,11 +18,11 @@ class BitFieldListFilter(FieldListFilter):
         self.lookup_val = int(request.GET.get(self.lookup_kwarg, 0))
         self.flags = field.flags
         self.labels = field.labels
-        super(BitFieldListFilter, self).__init__(field,
-            request, params, model, model_admin, field_path)
+        super(BitFieldListFilter, self).__init__(
+            field, request, params, model, model_admin, field_path)
 
     def queryset(self, request, queryset):
-        filter = dict((p, F(p) | v) for p, v in self.used_parameters.iteritems())
+        filter = dict((p, bitor(F(p), v)) for p, v in self.used_parameters.iteritems())
         try:
             return queryset.filter(**filter)
         except ValidationError, e:
@@ -33,16 +34,13 @@ class BitFieldListFilter(FieldListFilter):
     def choices(self, cl):
         yield {
             'selected': self.lookup_val == 0,
-            'query_string': cl.get_query_string({
-                }, [self.lookup_kwarg]),
+            'query_string': cl.get_query_string({}, [self.lookup_kwarg]),
             'display': _('All'),
         }
         for number, flag in enumerate(self.flags):
             bit_mask = Bit(number).mask
             yield {
                 'selected': self.lookup_val == bit_mask,
-                'query_string': cl.get_query_string({
-                        self.lookup_kwarg: bit_mask,
-                    }),
+                'query_string': cl.get_query_string({self.lookup_kwarg: bit_mask}),
                 'display': self.labels[number],
             }
