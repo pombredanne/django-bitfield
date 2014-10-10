@@ -21,8 +21,10 @@ class Bit(object):
     def __int__(self):
         return self.mask
 
-    def __nonzero__(self):
+    def __bool__(self):
         return self.is_set
+
+    __nonzero__ = __bool__
 
     def __eq__(self, value):
         if isinstance(value, Bit):
@@ -120,6 +122,9 @@ class BitHandler(object):
             return False
         return self._value == other._value
 
+    def __cmp__(self, other):
+        return cmp(self._value, other)
+
     def __repr__(self):
         return '<%s: %s>' % (self.__class__.__name__, ', '.join('%s=%s' % (k, self.get_bit(n).is_set) for n, k in enumerate(self._keys)),)
 
@@ -129,8 +134,10 @@ class BitHandler(object):
     def __int__(self):
         return self._value
 
-    def __nonzero__(self):
+    def __bool__(self):
         return bool(self._value)
+
+    __nonzero__ = __bool__
 
     def __and__(self, value):
         return BitHandler(self._value & int(value), self._keys)

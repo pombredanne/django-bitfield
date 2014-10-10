@@ -8,6 +8,8 @@ except ImportError:
     # django 1.2
     from django.db.models.fields.subclassing import LegacyConnection as SubfieldBase  # NOQA
 
+import six
+
 from bitfield.forms import BitFormField
 from bitfield.query import BitQueryLookupWrapper
 from bitfield.types import BitHandler, Bit
@@ -93,9 +95,7 @@ class BitFieldMeta(SubfieldBase):
         return new_class
 
 
-class BitField(BigIntegerField):
-    __metaclass__ = BitFieldMeta
-
+class BitField(six.with_metaclass(BitFieldMeta, BigIntegerField)):
     def __init__(self, flags, default=None, *args, **kwargs):
         if isinstance(flags, dict):
             # Get only integer keys in correct range
@@ -108,6 +108,7 @@ class BitField(BigIntegerField):
         if len(flags) > MAX_FLAG_COUNT:
             raise ValueError('Too many flags')
 
+        self._arg_flags = flags
         flags = list(flags)
         labels = []
         for num, flag in enumerate(flags):
@@ -143,6 +144,8 @@ class BitField(BigIntegerField):
         return value
 
     def get_prep_value(self, value):
+        if value is None:
+            return None
         if isinstance(value, (BitHandler, Bit)):
             value = value.mask
         return int(value)
@@ -176,7 +179,7 @@ class BitField(BigIntegerField):
             # Regression for #1425: fix bad data that was created resulting
             # in negative values for flags.  Compute the value that would
             # have been visible ot the application to preserve compatibility.
-            if isinstance(value, (int, long)) and value < 0:
+            if isinstance(value, six.integer_types) and value < 0:
                 new_value = 0
                 for bit_number, _ in enumerate(self.flags):
                     new_value |= (value & (2 ** bit_number))
@@ -187,6 +190,11 @@ class BitField(BigIntegerField):
             # Ensure flags are consistent for unpickling
             value._keys = self.flags
         return value
+
+    def deconstruct(self):
+        name, path, args, kwargs = super(BitField, self).deconstruct()
+        args.insert(0, self._arg_flags)
+        return name, path, args, kwargs
 
 
 class CompositeBitFieldWrapper(object):
