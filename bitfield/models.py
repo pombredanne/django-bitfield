@@ -1,5 +1,8 @@
+from __future__ import absolute_import
+
+import six
+
 from django.db.models import signals
-from django.db.models.sql.expressions import SQLEvaluator
 from django.db.models.fields import Field, BigIntegerField
 from django.db.models.fields.subclassing import Creator
 try:
@@ -7,8 +10,6 @@ try:
 except ImportError:
     # django 1.2
     from django.db.models.fields.subclassing import LegacyConnection as SubfieldBase  # NOQA
-
-import six
 
 from bitfield.forms import BitFormField
 from bitfield.query import BitQueryLookupWrapper
@@ -156,15 +157,19 @@ class BitField(six.with_metaclass(BitFieldMeta, BigIntegerField)):
     #     return super(BitField, self).get_db_prep_save(value, connection=connection)
 
     def get_db_prep_lookup(self, lookup_type, value, connection, prepared=False):
-        if isinstance(value, SQLEvaluator) and isinstance(value.expression, Bit):
+        if isinstance(getattr(value, 'expression', None), Bit):
             value = value.expression
         if isinstance(value, (BitHandler, Bit)):
-            return BitQueryLookupWrapper(self.model._meta.db_table, self.db_column or self.name, value)
+            if hasattr(self, 'class_lookups'):
+                # Django 1.7+
+                return [value.mask]
+            else:
+                return BitQueryLookupWrapper(self.model._meta.db_table, self.db_column or self.name, value)
         return BigIntegerField.get_db_prep_lookup(self, lookup_type=lookup_type, value=value,
                                                   connection=connection, prepared=prepared)
 
     def get_prep_lookup(self, lookup_type, value):
-        if isinstance(value, SQLEvaluator) and isinstance(value.expression, Bit):
+        if isinstance(getattr(value, 'expression', None), Bit):
             value = value.expression
         if isinstance(value, Bit):
             if lookup_type in ('exact',):
@@ -195,6 +200,12 @@ class BitField(six.with_metaclass(BitFieldMeta, BigIntegerField)):
         name, path, args, kwargs = super(BitField, self).deconstruct()
         args.insert(0, self._arg_flags)
         return name, path, args, kwargs
+
+
+try:
+    BitField.register_lookup(BitQueryLookupWrapper)
+except AttributeError:
+    pass
 
 
 class CompositeBitFieldWrapper(object):
@@ -232,13 +243,17 @@ class CompositeBitFieldWrapper(object):
 
 
 class CompositeBitField(object):
+    is_relation = False
+    many_to_many = False
+    concrete = False
+
     def __init__(self, fields):
         self.fields = fields
 
     def contribute_to_class(self, cls, name):
         self.name = name
         self.model = cls
-        cls._meta.add_virtual_field(self)
+        cls._meta.virtual_fields.append(self)
 
         signals.class_prepared.connect(self.validate_fields, sender=cls)
 
