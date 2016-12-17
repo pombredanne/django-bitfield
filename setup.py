@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='django-bitfield',
-    version='1.9.0',
+    version='1.9.1',
     author='DISQUS',
     author_email='opensource@disqus.com',
     url='https://github.com/disqus/django-bitfield',
@@ -32,11 +32,9 @@ setup(
         'Topic :: Software Development',
         "Programming Language :: Python",
         "Programming Language :: Python :: 2",
-        "Programming Language :: Python :: 2.6",
         "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.2",
-        "Programming Language :: Python :: 3.3",
         "Programming Language :: Python :: 3.4",
+        "Programming Language :: Python :: 3.5",
     ],
 )
